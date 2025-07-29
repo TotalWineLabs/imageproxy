@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"golang.org/x/image/bmp"
 	"image"
 	"image/color"
 	"image/draw"
@@ -30,6 +29,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"golang.org/x/image/bmp"
 
 	"github.com/disintegration/imaging"
 )
@@ -414,7 +415,7 @@ func TestTWMChanges(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(shouldOut, out) {
-			TMPORARYWriteTestImage("test-images/tmepout.png", out)
+			TMPORARYWriteTestImage("test-images/tempout.png", out)
 			t.Errorf("Transform with with encoder %s with empty options returned modified result", tt.name)
 		}
 

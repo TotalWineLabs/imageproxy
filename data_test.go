@@ -47,6 +47,18 @@ func TestOptions_String(t *testing.T) {
 			Options{ScaleUp: true, CropX: 100, CropY: 200, CropWidth: 300, CropHeight: 400, SmartCrop: true},
 			"0x0,ch400,cw300,cx100,cy200,sc,scaleUp",
 		},
+		{
+			Options{Square: true},
+			"0x0,sq",
+		},
+		{
+			Options{Rectangle: true},
+			"0x0,rect",
+		},
+		{
+			Options{Width: 100, Height: 200, Square: true, Rectangle: true},
+			"100x200,rect,sq",
+		},
 	}
 
 	for i, tt := range tests {
@@ -98,6 +110,12 @@ func TestParseOptions(t *testing.T) {
 		{"q70,1x2,fit,r90,fv,fh,sc0ffee,png", Options{Width: 1, Height: 2, Fit: true, Rotate: 90, FlipVertical: true, FlipHorizontal: true, Quality: 70, Signature: "c0ffee", Format: "png"}},
 		{"r90,fh,sc0ffee,png,q90,1x2,fv,fit", Options{Width: 1, Height: 2, Fit: true, Rotate: 90, FlipVertical: true, FlipHorizontal: true, Quality: 90, Signature: "c0ffee", Format: "png"}},
 		{"cx100,cw300,1x2,cy200,ch400,sc,scaleUp", Options{Width: 1, Height: 2, ScaleUp: true, CropX: 100, CropY: 200, CropWidth: 300, CropHeight: 400, SmartCrop: true}},
+
+		// square and rectangle options
+		{"sq", Options{Square: true}},
+		{"rect", Options{Rectangle: true}},
+		{"1x2,sq", Options{Width: 1, Height: 2, Square: true}},
+		{"rect,100x200", Options{Width: 100, Height: 200, Rectangle: true}},
 	}
 
 	for _, tt := range tests {

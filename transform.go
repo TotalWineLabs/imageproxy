@@ -325,6 +325,38 @@ func makeSquare(m image.Image, sidePadding int) image.Image {
 	return transparentSquare
 }
 
+// make image rectangular with 5:7 ratio by adding transparency on both sides
+func makeRectangle(m image.Image, sidePadding int) image.Image {
+	x := m.Bounds().Dx()
+	x = x + sidePadding
+	y := m.Bounds().Dy()
+
+	// Calculate dimensions for 5:7 ratio (width:height)
+	// We want to fit the image within a 5:7 ratio canvas
+	var canvasWidth, canvasHeight int
+
+	// Determine which dimension should be the base
+	imageRatio := float64(x) / float64(y)
+	targetRatio := 5.0 / 7.0 // 0.714...
+
+	if imageRatio > targetRatio {
+		// Image is wider than target ratio, base on width
+		canvasWidth = x
+		canvasHeight = int(float64(x) * 7.0 / 5.0)
+	} else {
+		// Image is taller than target ratio, base on height
+		canvasHeight = y
+		canvasWidth = int(float64(y) * 5.0 / 7.0)
+	}
+
+	backGroundColor := image.Transparent
+	offset := image.Pt(canvasWidth/2-m.Bounds().Dx()/2, canvasHeight/2-m.Bounds().Dy()/2)
+	transparentRectangle := image.NewRGBA(image.Rect(0, 0, canvasWidth, canvasHeight))
+	draw.Draw(transparentRectangle, transparentRectangle.Bounds(), backGroundColor, image.ZP, draw.Src)
+	draw.Draw(transparentRectangle, transparentRectangle.Bounds().Add(offset), m, image.ZP, draw.Over)
+	return transparentRectangle
+}
+
 // read EXIF orientation tag from r and adjust opt to orient image correctly.
 func exifOrientation(r io.Reader) (opt Options) {
 	// Exif Orientation Tag values
@@ -474,6 +506,9 @@ func transformImage(m image.Image, opt Options) image.Image {
 
 	if opt.Square {
 		m = makeSquare(m, 0)
+	}
+	if opt.Rectangle {
+		m = makeRectangle(m, 0)
 	}
 	if opt.IndicatorSize != "" {
 		m = addSizeIndicator(m, opt.IndicatorSize)

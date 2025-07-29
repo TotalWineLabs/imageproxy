@@ -67,6 +67,8 @@ x0.15   | 15% original height, proportional width  | <a href="https://imageproxy
 100,fv,fh | 100px square, flipped horizontal and vertical | <a href="https://imageproxy.willnorris.com/100,fv,fh/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/100,fv,fh/https://willnorris.com/2013/12/small-things.jpg" alt="100,fv,fh"></a>
 200x,q60 | 200px wide, proportional height, 60% quality | <a href="https://imageproxy.willnorris.com/200x,q60/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/200x,q60/https://willnorris.com/2013/12/small-things.jpg" alt="200x,q60"></a>
 200x,png | 200px wide, converted to PNG format | <a href="https://imageproxy.willnorris.com/200x,png/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/200x,png/https://willnorris.com/2013/12/small-things.jpg" alt="200x,png"></a>
+rect | rectangular canvas with 5:7 aspect ratio, adding transparency as needed | Example: `/rect/image.jpg`
+200x,rect | 200px wide with rectangular 5:7 canvas | Example: `/200x,rect/image.jpg`
 cx175,cw400,ch300,100x | crop to 400x300px starting at (175,0), scale to 100px wide | <a href="https://imageproxy.willnorris.com/cx175,cw400,ch300,100x/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/cx175,cw400,ch300,100x/https://willnorris.com/2013/12/small-things.jpg" alt="cx175,cw400,ch300,100x"></a>
 
 The [smart crop feature](https://godoc.org/willnorris.com/go/imageproxy#hdr-Smart_Crop)
