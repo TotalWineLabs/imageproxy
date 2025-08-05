@@ -357,6 +357,71 @@ func makeRectangle(m image.Image, sidePadding int) image.Image {
 	return transparentRectangle
 }
 
+// make image rectangular with 5:7 ratio with specific dimensions
+func makeRectangleWithDimensions(m image.Image, targetWidth, targetHeight int) image.Image {
+	// Calculate the 5:7 ratio canvas dimensions
+	var canvasWidth, canvasHeight int
+
+	if targetWidth > 0 && targetHeight > 0 {
+		// Both dimensions specified, use them directly but maintain 5:7 ratio
+		// Choose the dimension that results in a larger canvas to fit the image
+		canvasFromWidth := targetWidth
+		canvasHeightFromWidth := int(float64(targetWidth) * 7.0 / 5.0)
+
+		canvasFromHeight := targetHeight
+		canvasWidthFromHeight := int(float64(targetHeight) * 5.0 / 7.0)
+
+		if canvasFromWidth >= canvasWidthFromHeight && canvasHeightFromWidth >= targetHeight {
+			canvasWidth = canvasFromWidth
+			canvasHeight = canvasHeightFromWidth
+		} else {
+			canvasWidth = canvasWidthFromHeight
+			canvasHeight = canvasFromHeight
+		}
+	} else if targetWidth > 0 {
+		// Only width specified, calculate height for 5:7 ratio
+		canvasWidth = targetWidth
+		canvasHeight = int(float64(targetWidth) * 7.0 / 5.0)
+	} else if targetHeight > 0 {
+		// Only height specified, calculate width for 5:7 ratio
+		canvasHeight = targetHeight
+		canvasWidth = int(float64(targetHeight) * 5.0 / 7.0)
+	} else {
+		// No dimensions specified, fall back to original behavior
+		return makeRectangle(m, 0)
+	}
+
+	// Scale the image to fit within the canvas while maintaining aspect ratio
+	imgWidth := m.Bounds().Dx()
+	imgHeight := m.Bounds().Dy()
+
+	scaleX := float64(canvasWidth) / float64(imgWidth)
+	scaleY := float64(canvasHeight) / float64(imgHeight)
+
+	// Use the smaller scale to ensure the image fits within the canvas
+	scale := scaleX
+	if scaleY < scaleX {
+		scale = scaleY
+	}
+
+	// Allow scaling up to fill the target canvas size
+	newWidth := int(float64(imgWidth) * scale)
+	newHeight := int(float64(imgHeight) * scale)
+
+	// Resize the image if needed
+	if newWidth != imgWidth || newHeight != imgHeight {
+		m = imaging.Resize(m, newWidth, newHeight, resampleFilter)
+	}
+
+	// Create the 5:7 canvas and center the image
+	backGroundColor := image.Transparent
+	offset := image.Pt(canvasWidth/2-m.Bounds().Dx()/2, canvasHeight/2-m.Bounds().Dy()/2)
+	transparentRectangle := image.NewRGBA(image.Rect(0, 0, canvasWidth, canvasHeight))
+	draw.Draw(transparentRectangle, transparentRectangle.Bounds(), backGroundColor, image.ZP, draw.Src)
+	draw.Draw(transparentRectangle, transparentRectangle.Bounds().Add(offset), m, image.ZP, draw.Over)
+	return transparentRectangle
+}
+
 // read EXIF orientation tag from r and adjust opt to orient image correctly.
 func exifOrientation(r io.Reader) (opt Options) {
 	// Exif Orientation Tag values
@@ -472,7 +537,49 @@ func transformImage(m image.Image, opt Options) image.Image {
 	if !m.Bounds().Eq(rect) {
 		m = imaging.Crop(m, rect)
 	}
-	// resize if needed
+
+	// Special handling for Rectangle option with dimensions
+	if opt.Rectangle && (opt.Width > 0 || opt.Height > 0) {
+		// For rectangle mode, we want to create a 5:7 canvas with the specified dimensions
+		// and fit the image within it, rather than resize first and then add canvas
+
+		// Convert percentage width and height values to absolute values
+		imgW := m.Bounds().Dx()
+		imgH := m.Bounds().Dy()
+		targetW := evaluateFloat(opt.Width, imgW)
+		targetH := evaluateFloat(opt.Height, imgH)
+
+		// Apply rotations before rectangle transformation
+		rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
+		switch rotate {
+		case 90:
+			m = imaging.Rotate90(m)
+		case 180:
+			m = imaging.Rotate180(m)
+		case 270:
+			m = imaging.Rotate270(m)
+		}
+
+		// Apply flips before rectangle transformation
+		if opt.FlipVertical {
+			m = imaging.FlipV(m)
+		}
+		if opt.FlipHorizontal {
+			m = imaging.FlipH(m)
+		}
+
+		// Create rectangle with specified dimensions
+		m = makeRectangleWithDimensions(m, targetW, targetH)
+
+		// Apply size indicator if needed
+		if opt.IndicatorSize != "" {
+			m = addSizeIndicator(m, opt.IndicatorSize)
+		}
+
+		return m
+	}
+
+	// Standard resize logic for non-rectangle cases
 	if resize {
 		if opt.Fit {
 			m = imaging.Fit(m, w, h, resampleFilter)

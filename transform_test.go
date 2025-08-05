@@ -387,6 +387,43 @@ func TestTransformImage(t *testing.T) {
 	}
 }
 
+// Test the specific case for rectangular canvas with width specified
+func TestTransformImage_RectangleWithWidth(t *testing.T) {
+	// Create a tall image (height > width) to test the specific case
+	tallImage := newImage(100, 200, red)
+
+	// Test with width=250, Rectangle=true
+	// Should create a 250x350 canvas (5:7 ratio) and fit the image within it
+	result := transformImage(tallImage, Options{Width: 250, Rectangle: true})
+
+	// Check that the result has the correct 5:7 ratio dimensions
+	expectedWidth := 250
+	expectedHeight := int(float64(250) * 7.0 / 5.0) // 350
+
+	if result.Bounds().Dx() != expectedWidth {
+		t.Errorf("Rectangle transformation with width=250: got width %d, want %d",
+			result.Bounds().Dx(), expectedWidth)
+	}
+	if result.Bounds().Dy() != expectedHeight {
+		t.Errorf("Rectangle transformation with width=250: got height %d, want %d",
+			result.Bounds().Dy(), expectedHeight)
+	}
+
+	// Test with a wide image (width > height)
+	wideImage := newImage(300, 100, blue)
+	result2 := transformImage(wideImage, Options{Width: 250, Rectangle: true})
+
+	// Should still create a 250x350 canvas
+	if result2.Bounds().Dx() != expectedWidth {
+		t.Errorf("Rectangle transformation with width=250 (wide image): got width %d, want %d",
+			result2.Bounds().Dx(), expectedWidth)
+	}
+	if result2.Bounds().Dy() != expectedHeight {
+		t.Errorf("Rectangle transformation with width=250 (wide image): got height %d, want %d",
+			result2.Bounds().Dy(), expectedHeight)
+	}
+}
+
 func TestTWMChanges(t *testing.T) {
 	src, err := getTwmTestImage("test-images/unanime.png")
 	if err != nil {
