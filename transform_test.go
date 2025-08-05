@@ -504,7 +504,7 @@ func TestTWMChanges(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(shouldOut, out) {
-			TMPORARYWriteTestImage("test-images/tempout.png", out)
+			TEMPORARYWriteTestImage("test-images/tempout.png", out)
 			t.Errorf("Transform with with encoder %s with empty options returned modified result", tt.name)
 		}
 
@@ -530,7 +530,7 @@ func getTwmTestImage(name string) ([]byte, error) {
 	return bs, nil
 }
 
-func TMPORARYWriteTestImage(name string, bs []byte) {
+func TEMPORARYWriteTestImage(name string, bs []byte) {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		fmt.Println(err)
@@ -539,5 +539,4 @@ func TMPORARYWriteTestImage(name string, bs []byte) {
 
 	n, err := f.Write(bs)
 	fmt.Println(n, err)
-
 }
