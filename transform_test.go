@@ -424,6 +424,58 @@ func TestTransformImage_RectangleWithWidth(t *testing.T) {
 	}
 }
 
+// Test comprehensive rectangle canvas functionality
+func TestRectangleCanvas(t *testing.T) {
+	tests := []struct {
+		name    string
+		image   image.Image
+		options Options
+		wantW   int
+		wantH   int
+	}{
+		{
+			name:    "Tall image with width specified",
+			image:   newImage(100, 200, red),
+			options: Options{Width: 250, Rectangle: true},
+			wantW:   250,
+			wantH:   350, // 250 * 7/5
+		},
+		{
+			name:    "Wide image with width specified",
+			image:   newImage(300, 100, blue),
+			options: Options{Width: 250, Rectangle: true},
+			wantW:   250,
+			wantH:   350,
+		},
+		{
+			name:    "Image with height specified",
+			image:   newImage(100, 300, green),
+			options: Options{Height: 350, Rectangle: true},
+			wantW:   250, // 350 * 5/7
+			wantH:   350,
+		},
+		{
+			name:    "Rectangle without dimensions",
+			image:   newImage(100, 200, red),
+			options: Options{Rectangle: true},
+			wantW:   142, // int(200 * 5/7)
+			wantH:   200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := transformImage(tt.image, tt.options)
+			if result.Bounds().Dx() != tt.wantW {
+				t.Errorf("%s: got width %d, want %d", tt.name, result.Bounds().Dx(), tt.wantW)
+			}
+			if result.Bounds().Dy() != tt.wantH {
+				t.Errorf("%s: got height %d, want %d", tt.name, result.Bounds().Dy(), tt.wantH)
+			}
+		})
+	}
+}
+
 func TestTWMChanges(t *testing.T) {
 	src, err := getTwmTestImage("test-images/unanime.png")
 	if err != nil {

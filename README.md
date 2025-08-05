@@ -30,7 +30,7 @@ imageproxy URLs are of the form `http://localhost/{options}/{remote_url}`.
 
 ### Options ###
 
-Options are available for cropping, resizing, rotation, flipping, and digital
+Options are available for cropping, resizing, rotation, flipping, rectangular canvas creation, and digital
 signatures among a few others.  Options for are specified as a comma delimited
 list of parameters, which can be supplied in any order.  Duplicate parameters
 overwrite previous values.
@@ -67,8 +67,10 @@ x0.15   | 15% original height, proportional width  | <a href="https://imageproxy
 100,fv,fh | 100px square, flipped horizontal and vertical | <a href="https://imageproxy.willnorris.com/100,fv,fh/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/100,fv,fh/https://willnorris.com/2013/12/small-things.jpg" alt="100,fv,fh"></a>
 200x,q60 | 200px wide, proportional height, 60% quality | <a href="https://imageproxy.willnorris.com/200x,q60/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/200x,q60/https://willnorris.com/2013/12/small-things.jpg" alt="200x,q60"></a>
 200x,png | 200px wide, converted to PNG format | <a href="https://imageproxy.willnorris.com/200x,png/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/200x,png/https://willnorris.com/2013/12/small-things.jpg" alt="200x,png"></a>
-rect | rectangular canvas with 5:7 aspect ratio, adding transparency as needed | Example: `/rect/image.jpg`
-200x,rect | 200px wide with rectangular 5:7 canvas | Example: `/200x,rect/image.jpg`
+rect | rectangular canvas with 5:7 aspect ratio, sized to fit image | Centers the image in a 5:7 ratio canvas, adding transparency as needed
+250x,rect | 250px wide rectangular canvas with 5:7 aspect ratio | Creates a 250×350px canvas (5:7 ratio) and fits the image within it
+x350,rect | 350px high rectangular canvas with 5:7 aspect ratio | Creates a 250×350px canvas (5:7 ratio) and fits the image within it
+200x,rect,r90 | 200px wide rectangular canvas, rotated 90 degrees | Image is rotated first, then fitted into a 200×280px canvas
 cx175,cw400,ch300,100x | crop to 400x300px starting at (175,0), scale to 100px wide | <a href="https://imageproxy.willnorris.com/cx175,cw400,ch300,100x/https://willnorris.com/2013/12/small-things.jpg"><img src="https://imageproxy.willnorris.com/cx175,cw400,ch300,100x/https://willnorris.com/2013/12/small-things.jpg" alt="cx175,cw400,ch300,100x"></a>
 
 The [smart crop feature](https://godoc.org/willnorris.com/go/imageproxy#hdr-Smart_Crop)
@@ -81,6 +83,29 @@ Options | Meaning                                  | Image
 150x300,sc | 150x300px, smart crop          | <a href="https://imageproxy.willnorris.com/150x300,sc/https://judahnorris.com/images/judah-sheets.jpg"><img src="https://imageproxy.willnorris.com/150x300,sc/https://judahnorris.com/images/judah-sheets.jpg" alt="200x400"></a>
 
 [judah-sheets]: https://judahnorris.com/images/judah-sheets.jpg
+
+### Rectangular Canvas Feature ###
+
+The `rect` option creates a rectangular canvas with a 5:7 aspect ratio (width:height), which is commonly used for product cards and consistent layouts. This feature is particularly useful when you need all images to have the same dimensions regardless of their original aspect ratios.
+
+#### Behavior ####
+
+- **Without dimensions** (`rect`): Creates a 5:7 canvas sized to fit the original image
+- **With width** (`250x,rect`): Creates a 250×350px canvas (maintaining 5:7 ratio)
+- **With height** (`x350,rect`): Creates a 250×350px canvas (maintaining 5:7 ratio)
+- **With both dimensions** (`250x350,rect`): Uses the larger dimension to maintain 5:7 ratio
+
+The original image is scaled to fit within the canvas while preserving its aspect ratio, then centered with transparent padding added as needed.
+
+#### Transformation Order ####
+
+When using `rect` with other transformations, the order matters:
+1. Cropping (if specified)
+2. Rotation and flips (applied to source image)
+3. Rectangular canvas creation with specified dimensions
+4. Size indicators (if specified)
+
+This ensures that rotations are applied to the source image before it's fitted into the 5:7 canvas, maintaining consistent output dimensions.
 
 Transformation also works on animated gifs.  Here is [this source
 image][material-animation] resized to 200px square and rotated 270 degrees:

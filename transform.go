@@ -359,67 +359,41 @@ func makeRectangle(m image.Image, sidePadding int) image.Image {
 
 // make image rectangular with 5:7 ratio with specific dimensions
 func makeRectangleWithDimensions(m image.Image, targetWidth, targetHeight int) image.Image {
-	// Calculate the 5:7 ratio canvas dimensions
-	var canvasWidth, canvasHeight int
-
-	if targetWidth > 0 && targetHeight > 0 {
-		// Both dimensions specified, use them directly but maintain 5:7 ratio
-		// Choose the dimension that results in a larger canvas to fit the image
-		canvasFromWidth := targetWidth
-		canvasHeightFromWidth := int(float64(targetWidth) * 7.0 / 5.0)
-
-		canvasFromHeight := targetHeight
-		canvasWidthFromHeight := int(float64(targetHeight) * 5.0 / 7.0)
-
-		if canvasFromWidth >= canvasWidthFromHeight && canvasHeightFromWidth >= targetHeight {
-			canvasWidth = canvasFromWidth
-			canvasHeight = canvasHeightFromWidth
-		} else {
-			canvasWidth = canvasWidthFromHeight
-			canvasHeight = canvasFromHeight
-		}
-	} else if targetWidth > 0 {
-		// Only width specified, calculate height for 5:7 ratio
-		canvasWidth = targetWidth
-		canvasHeight = int(float64(targetWidth) * 7.0 / 5.0)
-	} else if targetHeight > 0 {
-		// Only height specified, calculate width for 5:7 ratio
-		canvasHeight = targetHeight
-		canvasWidth = int(float64(targetHeight) * 5.0 / 7.0)
-	} else {
-		// No dimensions specified, fall back to original behavior
+	if targetWidth == 0 && targetHeight == 0 {
 		return makeRectangle(m, 0)
 	}
 
-	// Scale the image to fit within the canvas while maintaining aspect ratio
-	imgWidth := m.Bounds().Dx()
-	imgHeight := m.Bounds().Dy()
-
-	scaleX := float64(canvasWidth) / float64(imgWidth)
-	scaleY := float64(canvasHeight) / float64(imgHeight)
-
-	// Use the smaller scale to ensure the image fits within the canvas
-	scale := scaleX
-	if scaleY < scaleX {
-		scale = scaleY
+	// Calculate 5:7 ratio canvas dimensions
+	var canvasWidth, canvasHeight int
+	switch {
+	case targetWidth > 0 && targetHeight > 0:
+		// Both specified - choose larger canvas to maintain 5:7 ratio
+		wCanvas, hFromW := targetWidth, int(float64(targetWidth)*7.0/5.0)
+		hCanvas, wFromH := targetHeight, int(float64(targetHeight)*5.0/7.0)
+		if wCanvas >= wFromH && hFromW >= targetHeight {
+			canvasWidth, canvasHeight = wCanvas, hFromW
+		} else {
+			canvasWidth, canvasHeight = wFromH, hCanvas
+		}
+	case targetWidth > 0:
+		canvasWidth, canvasHeight = targetWidth, int(float64(targetWidth)*7.0/5.0)
+	default: // targetHeight > 0
+		canvasHeight, canvasWidth = targetHeight, int(float64(targetHeight)*5.0/7.0)
 	}
 
-	// Allow scaling up to fill the target canvas size
-	newWidth := int(float64(imgWidth) * scale)
-	newHeight := int(float64(imgHeight) * scale)
-
-	// Resize the image if needed
-	if newWidth != imgWidth || newHeight != imgHeight {
-		m = imaging.Resize(m, newWidth, newHeight, resampleFilter)
+	// Scale image to fit in canvas
+	imgW, imgH := m.Bounds().Dx(), m.Bounds().Dy()
+	scale := math.Min(float64(canvasWidth)/float64(imgW), float64(canvasHeight)/float64(imgH))
+	if newW, newH := int(float64(imgW)*scale), int(float64(imgH)*scale); newW != imgW || newH != imgH {
+		m = imaging.Resize(m, newW, newH, resampleFilter)
 	}
 
-	// Create the 5:7 canvas and center the image
-	backGroundColor := image.Transparent
-	offset := image.Pt(canvasWidth/2-m.Bounds().Dx()/2, canvasHeight/2-m.Bounds().Dy()/2)
-	transparentRectangle := image.NewRGBA(image.Rect(0, 0, canvasWidth, canvasHeight))
-	draw.Draw(transparentRectangle, transparentRectangle.Bounds(), backGroundColor, image.ZP, draw.Src)
-	draw.Draw(transparentRectangle, transparentRectangle.Bounds().Add(offset), m, image.ZP, draw.Over)
-	return transparentRectangle
+	// Create canvas and center image
+	canvas := image.NewRGBA(image.Rect(0, 0, canvasWidth, canvasHeight))
+	draw.Draw(canvas, canvas.Bounds(), image.Transparent, image.ZP, draw.Src)
+	offset := image.Pt((canvasWidth-m.Bounds().Dx())/2, (canvasHeight-m.Bounds().Dy())/2)
+	draw.Draw(canvas, canvas.Bounds().Add(offset), m, image.ZP, draw.Over)
+	return canvas
 }
 
 // read EXIF orientation tag from r and adjust opt to orient image correctly.
@@ -521,6 +495,29 @@ func getIndicatorImage(relativePath string, size string) (error, image.Image) {
 	return err, sizeImage
 }
 
+// applyRotationAndFlips applies rotation and flip transformations to an image
+func applyRotationAndFlips(m image.Image, opt Options) image.Image {
+	// Apply rotation
+	rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
+	switch rotate {
+	case 90:
+		m = imaging.Rotate90(m)
+	case 180:
+		m = imaging.Rotate180(m)
+	case 270:
+		m = imaging.Rotate270(m)
+	}
+
+	// Apply flips
+	if opt.FlipVertical {
+		m = imaging.FlipV(m)
+	}
+	if opt.FlipHorizontal {
+		m = imaging.FlipH(m)
+	}
+	return m
+}
+
 // transformImage modifies the image m based on the transformations specified
 // in opt.
 func transformImage(m image.Image, opt Options) image.Image {
@@ -540,42 +537,17 @@ func transformImage(m image.Image, opt Options) image.Image {
 
 	// Special handling for Rectangle option with dimensions
 	if opt.Rectangle && (opt.Width > 0 || opt.Height > 0) {
-		// For rectangle mode, we want to create a 5:7 canvas with the specified dimensions
-		// and fit the image within it, rather than resize first and then add canvas
+		// Apply rotations and flips first
+		m = applyRotationAndFlips(m, opt)
 
-		// Convert percentage width and height values to absolute values
-		imgW := m.Bounds().Dx()
-		imgH := m.Bounds().Dy()
-		targetW := evaluateFloat(opt.Width, imgW)
-		targetH := evaluateFloat(opt.Height, imgH)
-
-		// Apply rotations before rectangle transformation
-		rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
-		switch rotate {
-		case 90:
-			m = imaging.Rotate90(m)
-		case 180:
-			m = imaging.Rotate180(m)
-		case 270:
-			m = imaging.Rotate270(m)
-		}
-
-		// Apply flips before rectangle transformation
-		if opt.FlipVertical {
-			m = imaging.FlipV(m)
-		}
-		if opt.FlipHorizontal {
-			m = imaging.FlipH(m)
-		}
-
-		// Create rectangle with specified dimensions
+		// Create rectangle with specified dimensions and fit image within
+		imgW, imgH := m.Bounds().Dx(), m.Bounds().Dy()
+		targetW, targetH := evaluateFloat(opt.Width, imgW), evaluateFloat(opt.Height, imgH)
 		m = makeRectangleWithDimensions(m, targetW, targetH)
 
-		// Apply size indicator if needed
 		if opt.IndicatorSize != "" {
 			m = addSizeIndicator(m, opt.IndicatorSize)
 		}
-
 		return m
 	}
 
@@ -592,24 +564,8 @@ func transformImage(m image.Image, opt Options) image.Image {
 		}
 	}
 
-	// rotate
-	rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
-	switch rotate {
-	case 90:
-		m = imaging.Rotate90(m)
-	case 180:
-		m = imaging.Rotate180(m)
-	case 270:
-		m = imaging.Rotate270(m)
-	}
-
-	// flip
-	if opt.FlipVertical {
-		m = imaging.FlipV(m)
-	}
-	if opt.FlipHorizontal {
-		m = imaging.FlipH(m)
-	}
+	// Apply rotations and flips
+	m = applyRotationAndFlips(m, opt)
 
 	if opt.Square {
 		m = makeSquare(m, 0)
