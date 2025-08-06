@@ -43,6 +43,7 @@ const (
 	optCropHeight                = "ch"
 	optSmartCrop                 = "sc"
 	optSquare                    = "sq"
+	optRectangle                 = "rect"
 	optIndicatorSize50ml         = "50ml"
 	optIndicatorSize100ml        = "100ml"
 	optIndicatorSize187ml        = "187ml"
@@ -126,6 +127,7 @@ type Options struct {
 	Webp bool
 
 	Square        bool
+	Rectangle     bool
 	IndicatorSize string
 }
 
@@ -173,6 +175,9 @@ func (o Options) String() string {
 	if o.Square {
 		opts = append(opts, optSquare)
 	}
+	if o.Rectangle {
+		opts = append(opts, optRectangle)
+	}
 	if o.IndicatorSize != "" {
 		opts = append(opts, o.IndicatorSize)
 	}
@@ -185,7 +190,7 @@ func (o Options) String() string {
 // the presence of other fields (like Fit).  A non-empty Format value is
 // assumed to involve a transformation.
 func (o Options) transform() bool {
-	return o.Square || o.Width != 0 || o.Height != 0 || o.Rotate != 0 || o.FlipHorizontal || o.FlipVertical || o.Quality != 0 || o.Format != "" || o.CropX != 0 || o.CropY != 0 || o.CropWidth != 0 || o.CropHeight != 0
+	return o.Square || o.Rectangle || o.Width != 0 || o.Height != 0 || o.Rotate != 0 || o.FlipHorizontal || o.FlipVertical || o.Quality != 0 || o.Format != "" || o.CropX != 0 || o.CropY != 0 || o.CropWidth != 0 || o.CropHeight != 0
 }
 
 // ParseOptions parses str as a list of comma separated transformation options.
@@ -287,6 +292,7 @@ func (o Options) transform() bool {
 //		cw100,ch100 - crop image to 100px square, starting at (0,0)
 //		cx10,cy20,cw100,ch200 - crop image starting at (10,20) is 100px wide and 200px tall
 //	 sq make image square by adding transparency on both sides of the image
+//	 rect make image rectangular with 5:7 ratio by adding transparency on both sides of the image
 func ParseOptions(str string) Options {
 	var options Options
 	for _, opt := range strings.Split(str, ",") {
@@ -307,6 +313,8 @@ func ParseOptions(str string) Options {
 			options.SmartCrop = true
 		case opt == optSquare:
 			options.Square = true
+		case opt == optRectangle:
+			options.Rectangle = true
 		case opt == optIndicatorSize50ml:
 			options.IndicatorSize = optIndicatorSize50ml
 			options.Square = true

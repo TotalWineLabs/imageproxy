@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"golang.org/x/image/bmp"
 	"image"
 	"image/color"
 	"image/draw"
@@ -30,6 +29,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"golang.org/x/image/bmp"
 
 	"github.com/disintegration/imaging"
 )
@@ -386,6 +387,95 @@ func TestTransformImage(t *testing.T) {
 	}
 }
 
+// Test the specific case for rectangular canvas with width specified
+func TestTransformImage_RectangleWithWidth(t *testing.T) {
+	// Create a tall image (height > width) to test the specific case
+	tallImage := newImage(100, 200, red)
+
+	// Test with width=250, Rectangle=true
+	// Should create a 250x350 canvas (5:7 ratio) and fit the image within it
+	result := transformImage(tallImage, Options{Width: 250, Rectangle: true})
+
+	// Check that the result has the correct 5:7 ratio dimensions
+	expectedWidth := 250
+	expectedHeight := int(float64(250) * 7.0 / 5.0) // 350
+
+	if result.Bounds().Dx() != expectedWidth {
+		t.Errorf("Rectangle transformation with width=250: got width %d, want %d",
+			result.Bounds().Dx(), expectedWidth)
+	}
+	if result.Bounds().Dy() != expectedHeight {
+		t.Errorf("Rectangle transformation with width=250: got height %d, want %d",
+			result.Bounds().Dy(), expectedHeight)
+	}
+
+	// Test with a wide image (width > height)
+	wideImage := newImage(300, 100, blue)
+	result2 := transformImage(wideImage, Options{Width: 250, Rectangle: true})
+
+	// Should still create a 250x350 canvas
+	if result2.Bounds().Dx() != expectedWidth {
+		t.Errorf("Rectangle transformation with width=250 (wide image): got width %d, want %d",
+			result2.Bounds().Dx(), expectedWidth)
+	}
+	if result2.Bounds().Dy() != expectedHeight {
+		t.Errorf("Rectangle transformation with width=250 (wide image): got height %d, want %d",
+			result2.Bounds().Dy(), expectedHeight)
+	}
+}
+
+// Test comprehensive rectangle canvas functionality
+func TestRectangleCanvas(t *testing.T) {
+	tests := []struct {
+		name    string
+		image   image.Image
+		options Options
+		wantW   int
+		wantH   int
+	}{
+		{
+			name:    "Tall image with width specified",
+			image:   newImage(100, 200, red),
+			options: Options{Width: 250, Rectangle: true},
+			wantW:   250,
+			wantH:   350, // 250 * 7/5
+		},
+		{
+			name:    "Wide image with width specified",
+			image:   newImage(300, 100, blue),
+			options: Options{Width: 250, Rectangle: true},
+			wantW:   250,
+			wantH:   350,
+		},
+		{
+			name:    "Image with height specified",
+			image:   newImage(100, 300, green),
+			options: Options{Height: 350, Rectangle: true},
+			wantW:   250, // 350 * 5/7
+			wantH:   350,
+		},
+		{
+			name:    "Rectangle without dimensions",
+			image:   newImage(100, 200, red),
+			options: Options{Rectangle: true},
+			wantW:   142, // int(200 * 5/7)
+			wantH:   200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := transformImage(tt.image, tt.options)
+			if result.Bounds().Dx() != tt.wantW {
+				t.Errorf("%s: got width %d, want %d", tt.name, result.Bounds().Dx(), tt.wantW)
+			}
+			if result.Bounds().Dy() != tt.wantH {
+				t.Errorf("%s: got height %d, want %d", tt.name, result.Bounds().Dy(), tt.wantH)
+			}
+		})
+	}
+}
+
 func TestTWMChanges(t *testing.T) {
 	src, err := getTwmTestImage("test-images/unanime.png")
 	if err != nil {
@@ -414,7 +504,7 @@ func TestTWMChanges(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(shouldOut, out) {
-			TMPORARYWriteTestImage("test-images/tmepout.png", out)
+			TEMPORARYWriteTestImage("test-images/tempout.png", out)
 			t.Errorf("Transform with with encoder %s with empty options returned modified result", tt.name)
 		}
 
@@ -440,7 +530,7 @@ func getTwmTestImage(name string) ([]byte, error) {
 	return bs, nil
 }
 
-func TMPORARYWriteTestImage(name string, bs []byte) {
+func TEMPORARYWriteTestImage(name string, bs []byte) {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		fmt.Println(err)
@@ -449,5 +539,4 @@ func TMPORARYWriteTestImage(name string, bs []byte) {
 
 	n, err := f.Write(bs)
 	fmt.Println(n, err)
-
 }
